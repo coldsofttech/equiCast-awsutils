@@ -12,7 +12,7 @@ def main():
 
     ca = CodeArtifact(domain=args.domain, owner=args.domain_owner, region_name="eu-west-1")
     ca.get_auth_token(github_key="token")
-    ca.get_endpoint(github_key="endpoint")
+    ca.get_endpoint(repo_name=args.repository, github_key="endpoint")
 
 
 if __name__ == '__main__':
