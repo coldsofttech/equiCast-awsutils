@@ -48,10 +48,10 @@ jobs:
           aws-region: eu-west-1
           role-session-name: GitHubActionsSession
 
-      - name: Get CodeArtifact Auth Token
+      - name: Get CodeArtifact Auth Token & Endpoint
         id: codeartifact
         run: |
-          python scripts/get_codeartifact_auth_token.py \
+          python scripts/get_codeartifact_auth_token_and_endpoint.py \
             --domain "${{ secrets.CODEARTIFACT_DOMAIN }}" \
             --domain-owner "${{ secrets.CODEARTIFACT_OWNER }}" \
             --repository "${{ secrets.AWSUTILS_CODEARTIFACT_REPO }}" \
@@ -71,7 +71,7 @@ jobs:
           TWINE_USERNAME: aws
           TWINE_PASSWORD: ${{ steps.codeartifact.outputs.token }}
           TWINE_REPOSITORY_URL: ${{ steps.codeartifact.outputs.endpoint }}
-        run: twine upload --non-interactive --repository-url $TWINE_REPOSITORY_URL dist/*
+        run: twine upload --non-interactive dist/*
 
       - name: Store Release Tag in SSM Parameter
         env:
