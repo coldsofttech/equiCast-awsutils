@@ -1,8 +1,11 @@
+from pathlib import Path
+
 from equicast_awsutils.cost import CodeArtifact
 
 
 def main():
-    ca = CodeArtifact(folder="../dist")
+    folder_path = Path(__file__).parent.parent / "dist"
+    ca = CodeArtifact(folder=folder_path)
     ca.calculate()
 
 
