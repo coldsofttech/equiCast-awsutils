@@ -14,7 +14,7 @@ def main():
     args = parser.parse_args()
 
     ssm = SSM(region_name=args.region)
-    ssm.update_parameter(param_name=args.name, value=args.value, type_=args.type, overwrite=args.no_overwrite)
+    ssm.update_parameter(param_name=args.name, value=args.value, type_=args.type, overwrite=not args.no_overwrite)
 
 
 if __name__ == "__main__":
