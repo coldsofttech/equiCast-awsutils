@@ -1,0 +1,114 @@
+name: AWS Utils PreChecks
+
+on:
+  push:
+    branches:
+      - "*"
+
+jobs:
+  lint:
+    if: github.event_name == 'push'
+    name: Lint Python
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Execute Lint
+        run: |
+          flake8 --verbose --color auto --count --statistics --format=default --output-file=flake8-report
+
+      - name: Upload Lint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: flake8-report
+
+  test:
+    name: Execute Unit Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run Test Cases
+        run: |
+          pytest tests -vv -rEPW -o pytest_collection_order=alphabetical \
+            --cache-clear --color=yes --html=pytest_results.html --self-contained-html
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: pytest_results.html
+
+  build:
+    name: Build Package
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -r requirements.txt
+
+      - name: Build Package
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Get Package
+        run: |
+          path_separator="/"
+          latestFile=$(ls -t dist/ | head -n 1)
+          echo "Latest file: $latestFile"
+          echo "PACKAGE_NAME=dist$path_separator$latestFile" >> $GITHUB_ENV
+
+      - name: Install Package
+        run: |
+          pip install ${{ env.PACKAGE_NAME }}
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyutils-dist
+          path: dist/*

@@ -1,0 +1,7 @@
+flake8==7.3.0
+pytest==8.4.2
+pytest-html==4.1.1
+setuptools==80.9.0
+wheel==0.45.1
+twine==6.2.0
+moto==5.1.12

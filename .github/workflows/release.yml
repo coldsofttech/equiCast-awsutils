@@ -1,0 +1,77 @@
+name: Publish AWS Utils
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build-and-release:
+    name: Build & Publish Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          pip install -r requirements-dev.txt
+          pip install -r requirements.txt
+
+      - name: Build Package
+        run: python -m build
+
+      - name: Estimate CodeArtifact Storage Cost
+        id: cost
+        run: |
+          python scripts/calculate_codeartifact_cost.py
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: eu-west-1
+          role-session-name: GitHubActionsSession
+
+      - name: Get CodeArtifact Auth Token
+        id: codeartifact
+        run: |
+          python scripts/get_codeartifact_auth_token.py \
+            --domain "${{ secrets.CODEARTIFACT_DOMAIN }}" \
+            --domain-owner "${{ secrets.CODEARTIFACT_OWNER }}" \
+            --repository "${{ secrets.AWSUTILS_CODEARTIFACT_REPO }}" \
+
+      - name: Delete Older Versions from CodeArtifact
+        env:
+          TOKEN: ${{ steps.codeartifact.outputs.token }}
+        run: |
+          python scripts/delete_codeartifact_package_versions.py \
+            --domain "${{ secrets.CODEARTIFACT_DOMAIN }}" \
+            --domain-owner "${{ secrets.CODEARTIFACT_OWNER }}" \
+            --repository "${{ secrets.AWSUTILS_CODEARTIFACT_REPO }}" \
+            --package-name "equicast-awsutils"
+
+      - name: Publish to CodeArtifact
+        env:
+          TWINE_USERNAME: aws
+          TWINE_PASSWORD: ${{ steps.codeartifact.outputs.token }}
+          TWINE_REPOSITORY_URL: ${{ steps.codeartifact.outputs.endpoint }}
+        run: twine upload --non-interactive dist/*
+
+      - name: Store Release Tag in SSM Parameter
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python scripts/store_ssm_parameter.py \
+            --name "${{ secrets.AWSUTILS_VERSION_SSM_PARAMETER }}" \
+            --value "$RELEASE_TAG"
