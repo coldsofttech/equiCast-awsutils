@@ -71,7 +71,7 @@ jobs:
           TWINE_USERNAME: aws
           TWINE_PASSWORD: ${{ steps.codeartifact.outputs.token }}
           TWINE_REPOSITORY_URL: ${{ steps.codeartifact.outputs.endpoint }}
-        run: twine upload --non-interactive dist/*
+        run: twine upload --non-interactive --repository-url $TWINE_REPOSITORY_URL dist/*
 
       - name: Store Release Tag in SSM Parameter
         env:
